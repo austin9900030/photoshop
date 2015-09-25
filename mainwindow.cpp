@@ -17,14 +17,16 @@ MainWindow::~MainWindow()
 void MainWindow::on_loadpicture_clicked()
 {
     QString fileName = QFileDialog::getOpenFileName();
+    //    qDebug() << fileName;
     cv::Mat src = cv::imread(fileName.toStdString());
 
     int width = src.cols;
     int height = src.rows;
 
-    cv::resize(src,src,cv::Size(width/4,height/4));
-    this->img = src.clone();
-    this->showImage(this->img);
+//    cv::resize(src,src,cv::Size(width/4,height/4));
+//    cv::imshow("WTF",src);
+        this->img = src.clone();
+        this->showImage(this->img);
 }
 
 void MainWindow::changeColor(const cv::Mat &src, cv::Mat &dst, QVector<int> value)
@@ -84,17 +86,19 @@ void MainWindow::showImage(const cv::Mat &src)
 {
 
     cv::Mat dst;
-    int width = ui->image_label->width();
-    int height = ui->image_label->height();
+    double width = ui->image_label->width();
+    double height = ui->image_label->height();
     double ratio = (double)width / (double)height;
     double imgRatio = src.cols / src.rows;
-    if (ratio>imgRatio)
+    if (ratio<imgRatio)
     {
-        cv::resize(src,dst,cv::Size(width,src.rows/(src.cols/width)));
+        qDebug() << ratio <<imgRatio;
+        cv::resize(src,dst,cv::Size(width,(double)src.rows/((double)src.cols/width)));
     }
     else
     {
-        cv::resize(src,dst,cv::Size(src.cols/(src.rows/height),height));
+        qDebug() << ratio<<imgRatio;
+        cv::resize(src,dst,cv::Size((double)src.cols/((double)src.rows/height),height));
     }
     ui->image_label->setPixmap(QPixmap::fromImage(this->Mat2QImage(dst)));
 }
@@ -102,32 +106,32 @@ void MainWindow::on_brightness_horizontalSlider_valueChanged(int value)
 {
     cv::Mat dst;
     dst = this->img.clone();
-        for(int i = 0 ;i < this->img.rows ; i++)
+    for(int i = 0 ;i < this->img.rows ; i++)
+    {
+        for(int j = 0 ;j< this->img.cols ; j++)
         {
-            for(int j = 0 ;j< this->img.cols ; j++)
+            for(int k = 0 ;k < this->img.channels() ; k++)
             {
-                for(int k = 0 ;k < this->img.channels() ; k++)
+                if(this->img.at<cv::Vec3b>(i,j)[k]+value > 255)
                 {
-                    if(this->img.at<cv::Vec3b>(i,j)[k]+value > 255)
-                    {
-                        dst.at<cv::Vec3b>(i,j)[k] = 255;
-                    }
-                    else if(this->img.at<cv::Vec3b>(i,j)[k]+value < 0)
-                    {
-                        dst.at<cv::Vec3b>(i,j)[k] = 0;
-                    }
-                    else
-                    {
-                        dst.at<cv::Vec3b>(i,j)[k] =
-                                this->img.at<cv::Vec3b>(i,j)[k]+value;
-                    }
-
+                    dst.at<cv::Vec3b>(i,j)[k] = 255;
                 }
+                else if(this->img.at<cv::Vec3b>(i,j)[k]+value < 0)
+                {
+                    dst.at<cv::Vec3b>(i,j)[k] = 0;
+                }
+                else
+                {
+                    dst.at<cv::Vec3b>(i,j)[k] =
+                            this->img.at<cv::Vec3b>(i,j)[k]+value;
+                }
+
             }
         }
+    }
 
-   this->showImage(dst);
-   this->img2=dst.clone();
+    this->showImage(dst);
+    this->img2=dst.clone();
 }
 
 void MainWindow::on_red_horizontalslider_valueChanged(int value)
@@ -172,51 +176,51 @@ void MainWindow::on_blue_horizontalslider_valueChanged(int value)
 void MainWindow::on_grayscale_clicked()
 {
     cv::Mat src = this->img;
-        cv::Mat dst;
-        dst.create(cv::Size(src.cols,src.rows),CV_8UC1);
-        for(int i = 0 ;i < src.rows ; i++)
+    cv::Mat dst;
+    dst.create(cv::Size(src.cols,src.rows),CV_8UC1);
+    for(int i = 0 ;i < src.rows ; i++)
+    {
+        for(int j = 0 ;j< src.cols ; j++)
         {
-            for(int j = 0 ;j< src.cols ; j++)
-            {
 
-                    dst.at<uchar>(i,j)
-                            = (src.at<cv::Vec3b>(i,j)[0]
-                            +src.at<cv::Vec3b>(i,j)[1]
-                            +src.at<cv::Vec3b>(i,j)[2])/3;
+            dst.at<uchar>(i,j)
+                    = (src.at<cv::Vec3b>(i,j)[0]
+                    +src.at<cv::Vec3b>(i,j)[1]
+                    +src.at<cv::Vec3b>(i,j)[2])/3;
 
-            }
         }
-        this->showImage(dst);
-        this->img2=dst.clone();
+    }
+    this->showImage(dst);
+    this->img2=dst.clone();
 }
 
 void MainWindow::on_blur_clicked()
 {
     cv::Mat src = this->img;
-        cv::Mat dst(src);
+    cv::Mat dst(src);
 
-        for(int i = 1 ;i < src.rows-1 ; i++)
+    for(int i = 1 ;i < src.rows-1 ; i++)
+    {
+        for(int j = 1 ;j< src.cols-1 ; j++)
         {
-            for(int j = 1 ;j< src.cols-1 ; j++)
-            {
 
-                for(int k = 0;k < src.channels();k++)
-                {
-                    dst.at<cv::Vec3b>(i,j)[k] =
-                            (src.at<cv::Vec3b>(i-1,j-1)[k]
-                            +src.at<cv::Vec3b>(i-1,j)[k]
-                            +src.at<cv::Vec3b>(i-1,j+1)[k]
-                            +src.at<cv::Vec3b>(i,j-1)[k]
-                            +src.at<cv::Vec3b>(i,j)[k]
-                            +src.at<cv::Vec3b>(i,j+1)[k]
-                            +src.at<cv::Vec3b>(i+1,j-1)[k]
-                            +src.at<cv::Vec3b>(i+1,j)[k]
-                            +src.at<cv::Vec3b>(i+1,j+1)[k])/9;
-                }
+            for(int k = 0;k < src.channels();k++)
+            {
+                dst.at<cv::Vec3b>(i,j)[k] =
+                        (src.at<cv::Vec3b>(i-1,j-1)[k]
+                         +src.at<cv::Vec3b>(i-1,j)[k]
+                         +src.at<cv::Vec3b>(i-1,j+1)[k]
+                         +src.at<cv::Vec3b>(i,j-1)[k]
+                         +src.at<cv::Vec3b>(i,j)[k]
+                         +src.at<cv::Vec3b>(i,j+1)[k]
+                         +src.at<cv::Vec3b>(i+1,j-1)[k]
+                         +src.at<cv::Vec3b>(i+1,j)[k]
+                         +src.at<cv::Vec3b>(i+1,j+1)[k])/9;
             }
         }
-        this->showImage(dst);
-        this->img2=dst.clone();
+    }
+    this->showImage(dst);
+    this->img2=dst.clone();
 }
 
 void MainWindow::on_contrast_horizontalSlider_valueChanged(int value)
@@ -225,28 +229,28 @@ void MainWindow::on_contrast_horizontalSlider_valueChanged(int value)
     float newV = value/10.0;
     qDebug() << "newV:" << newV;
     for(int i = 0 ;i < this->img.rows ; i++)
+    {
+        for(int j = 0 ;j< this->img.cols ; j++)
         {
-            for(int j = 0 ;j< this->img.cols ; j++)
+            for(int k = 0 ;k < this->img.channels() ; k++)
             {
-                for(int k = 0 ;k < this->img.channels() ; k++)
+                if(this->img.at<cv::Vec3b>(i,j)[k]*newV > 255)
                 {
-                    if(this->img.at<cv::Vec3b>(i,j)[k]*newV > 255)
-                    {
-                       dst.at<cv::Vec3b>(i,j)[k] = 255;
-                    }
-                    else if(this->img.at<cv::Vec3b>(i,j)[k]*newV < 0)
-                    {
-                       dst.at<cv::Vec3b>(i,j)[k] = 0;
-                    }
-                    else
-                    {
-                       dst.at<cv::Vec3b>(i,j)[k] =
-                                this->img.at<cv::Vec3b>(i,j)[k]*newV;
-                    }
-
+                    dst.at<cv::Vec3b>(i,j)[k] = 255;
                 }
+                else if(this->img.at<cv::Vec3b>(i,j)[k]*newV < 0)
+                {
+                    dst.at<cv::Vec3b>(i,j)[k] = 0;
+                }
+                else
+                {
+                    dst.at<cv::Vec3b>(i,j)[k] =
+                            this->img.at<cv::Vec3b>(i,j)[k]*newV;
+                }
+
             }
         }
+    }
 
     this->showImage(dst);
     this->img2=dst.clone();
@@ -265,18 +269,18 @@ void MainWindow::on_edge_clicked()
 void MainWindow::on_negative_clicked()
 {
     cv::Mat dst = this->img.clone();
-       for(int i=0;i< this->img.rows;i++)
-       {
-           for(int j=0;j< this->img.cols;j++)
-           {
-                   dst.at<cv::Vec3b>(i,j)[0] =255-this->img2.at<cv::Vec3b>(i,j)[0];
-                   dst.at<cv::Vec3b>(i,j)[1] =255-this->img2.at<cv::Vec3b>(i,j)[1];
-                   dst.at<cv::Vec3b>(i,j)[2] =255-this->img2.at<cv::Vec3b>(i,j)[2];
-           }
-           qDebug()<<"here";
-       }
-       this->showImage(dst);
-       this->img2=dst.clone();
+    for(int i=0;i< this->img.rows;i++)
+    {
+        for(int j=0;j< this->img.cols;j++)
+        {
+            dst.at<cv::Vec3b>(i,j)[0] =255-this->img2.at<cv::Vec3b>(i,j)[0];
+            dst.at<cv::Vec3b>(i,j)[1] =255-this->img2.at<cv::Vec3b>(i,j)[1];
+            dst.at<cv::Vec3b>(i,j)[2] =255-this->img2.at<cv::Vec3b>(i,j)[2];
+        }
+        qDebug()<<"here";
+    }
+    this->showImage(dst);
+    this->img2=dst.clone();
 }
 
 void MainWindow::on_save_clicked()
